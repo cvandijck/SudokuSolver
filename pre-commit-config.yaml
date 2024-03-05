@@ -1,0 +1,47 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  hooks:
+  # - id: no-commit-to-branch
+  #   name: no-commit-to-branch
+  #   entry: no-commit-to-branch
+  #   language: python
+  #   always_run: true
+  #   pass_filenames: false
+  #   args: [ '--branch', 'main', '--branch', 'master' ]
+  #   fail_fast: true
+  #   additional_dependencies: [pre-commit-hooks==4.5.0]
+  - id: check-toml
+    name: check-toml
+    entry: check-toml
+    language: python
+    files: \.(toml)$
+  - id: check-yaml
+    name: check-yaml
+    entry: check-yaml
+    language: python
+    files: \.(yaml)$
+  - id: detect-private-key
+    name: detect-private-key
+    entry: detect-private-key
+    language: python
+    types: [file]
+  - id: check-added-large-files
+    name: check-added-large-files
+    entry: check-added-large-files
+    language: python
+    types: [file]
+
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  hooks:
+    # run the linter
+    - id: ruff
+      name: ruff
+      entry: ruff check
+      language: python
+      types: [python]
+      args: ['--fix']
+    - id: ruff-format
+      name: ruff-format
+      entry: ruff format
+      language: python
+      types: [python]
