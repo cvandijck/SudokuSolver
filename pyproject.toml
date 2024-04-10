@@ -16,7 +16,7 @@ pre-commit = "^3.6.2"
 
 
 [tool.ruff]
-line-length = 88
+line-length = 120
 # rules to be applied
 # see https://docs.astral.sh/ruff/rules
 select = [
