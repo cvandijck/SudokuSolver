@@ -4,12 +4,14 @@ import numpy as np
 
 from sudokusolver.checks import check_horizontals, check_subblocks, check_verticals
 from sudokusolver.constants import PUZZLE_9X9_VALID_ELEMENTS, PUZZLE_DTYPE, PUZZLE_UNKNOWN_VALUE
+from sudokusolver.rules import update_horizontals, update_verticals
 
 
 class Puzzle:
     DTYPE = PUZZLE_DTYPE
     UNKNOWN_VAL: DTYPE = PUZZLE_UNKNOWN_VALUE
-    CHECKS: list[Callable[[np.ndarray], bool]] = ()
+    CHECKS: list[Callable[[np.ndarray, set], bool]] = ()
+    RULES: list[Callable[[np.ndarray], np.ndarray]] = ()
 
     def __init__(self, data: np.ndarray, unknown_value: DTYPE, valid_elements: set[DTYPE]) -> None:
         data = np.squeeze(np.array(data, dtype=self.DTYPE))
@@ -75,15 +77,26 @@ class Puzzle:
             if not check:
                 raise ValueError(f'Puzzle is not valid, failing {check_function.__name__}')
 
+    def update_options(self) -> None:
+        for rule_function in self.RULES:
+            updated_options = rule_function(options=self.options)
+            self._options = updated_options
+
+    def update_data(self) -> None:
+        collapsed_options_mask = np.sum(self._options, axis=2) == 1
+        for elem_index in np.vstack(np.nonzero(collapsed_options_mask)).T:
+            if self._data[*elem_index] == self.UNKNOWN_VAL:
+                self._data[*elem_index] = self._valid_elements[self._options[*elem_index]]
+
     def as_str(self, incl_options: bool = True) -> str:
         str_rows = []
 
         for i, (data_row, options_row) in enumerate(zip(self._data, self._options)):
-            data_row_str = [str(d) if d != self.UNKNOWN_VAL else '*' for d in data_row]
+            data_row_str = [str(d) if d != self.UNKNOWN_VAL else '.' for d in data_row]
             options_row_str = [f'[{np.sum(options)}]' for options in options_row]
 
             if self.block_size:
-                str_row = '||'
+                str_row = '||  '
                 for b in range(self.block_size):
                     data_block_str = data_row_str[b * self.block_size : b * self.block_size + self.block_size]
 
@@ -94,7 +107,7 @@ class Puzzle:
                         block_str = data_block_str
 
                     str_row += ' | '.join(block_str)
-                    str_row += ' || '
+                    str_row += '  ||  '
 
                 str_row = str_row[:-1]
             else:
@@ -120,7 +133,11 @@ class Puzzle:
 
 
 class ClassicPuzzle(Puzzle):
-    VALIDATORS = (check_horizontals, check_verticals, check_subblocks)
+    CHECKS = (check_horizontals, check_verticals, check_subblocks)
+    RULES = (
+        update_horizontals,
+        update_verticals,
+    )
 
     def __init__(
         self,
