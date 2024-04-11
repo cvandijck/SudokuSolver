@@ -4,7 +4,7 @@ import numpy as np
 
 from sudokusolver.checks import check_horizontals, check_subblocks, check_verticals
 from sudokusolver.constants import PUZZLE_9X9_VALID_ELEMENTS, PUZZLE_DTYPE, PUZZLE_UNKNOWN_VALUE
-from sudokusolver.rules import update_horizontals, update_verticals
+from sudokusolver.rules import update_blocks, update_horizontals, update_verticals
 
 
 class Puzzle:
@@ -42,6 +42,10 @@ class Puzzle:
     @property
     def size(self):
         return self._data.shape[0]
+
+    @property
+    def is_solved(self):
+        return not np.any(self._data == self.UNKNOWN_VAL)
 
     @property
     def unsolved_ids(self):
@@ -134,10 +138,7 @@ class Puzzle:
 
 class ClassicPuzzle(Puzzle):
     CHECKS = (check_horizontals, check_verticals, check_subblocks)
-    RULES = (
-        update_horizontals,
-        update_verticals,
-    )
+    RULES = (update_horizontals, update_verticals, update_blocks)
 
     def __init__(
         self,

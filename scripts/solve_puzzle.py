@@ -10,7 +10,9 @@ EXAMPLE_FILE = SCRIPT_DIR.parent / 'tests/data/classic/problems/s01a.txt'
 
 def main(args):
     puzzle = load_classic_puzzle(EXAMPLE_FILE)
-    solve_puzzle(puzzle)
+    success = solve_puzzle(puzzle, validate=True)
+    print(f'{success=}')
+    print(puzzle)
 
 
 if __name__ == '__main__':
