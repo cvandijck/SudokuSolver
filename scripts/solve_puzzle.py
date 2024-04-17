@@ -5,7 +5,7 @@ from sudokusolver.io import load_classic_puzzle
 from sudokusolver.solver import solve_puzzle
 
 SCRIPT_DIR = Path(__file__).parent
-EXAMPLE_FILE = SCRIPT_DIR.parent / 'tests/data/classic/problems/s01a.txt'
+EXAMPLE_FILE = SCRIPT_DIR.parent / 'tests/data/classic/problems/s03a.txt'
 
 
 def main(args):

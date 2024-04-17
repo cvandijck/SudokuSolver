@@ -9,7 +9,9 @@ def solve_puzzle(puzzle: Puzzle, max_iter: int = DEFAULT_MAX_ITER, validate: boo
     for _ in range(max_iter):
         # print(f'iteration {i}')
         # print(f'\nbefore\n{puzzle}')
-        puzzle.update_options()
+        options_updated = puzzle.update_options()
+        if not options_updated:
+            puzzle.collapse_random()
         puzzle.update_data()
 
         if validate:

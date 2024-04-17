@@ -36,6 +36,10 @@ class Puzzle:
         return self._options
 
     @property
+    def open_options(self):
+        return np.sum(self._options, axis=-1)
+
+    @property
     def shape(self):
         return self._data.shape
 
@@ -81,16 +85,29 @@ class Puzzle:
             if not check:
                 raise ValueError(f'Puzzle is not valid, failing {check_function.__name__}')
 
-    def update_options(self) -> None:
+    def update_options(self) -> bool:
+        options_changed = False
         for rule_function in self.RULES:
-            updated_options = rule_function(options=self.options)
+            updated_options = rule_function(options=self._options)
+            options_changed |= not np.all(np.equal(updated_options, self._options))
             self._options = updated_options
+        return options_changed
 
     def update_data(self) -> None:
         collapsed_options_mask = np.sum(self._options, axis=2) == 1
         for elem_index in np.vstack(np.nonzero(collapsed_options_mask)).T:
             if self._data[*elem_index] == self.UNKNOWN_VAL:
                 self._data[*elem_index] = self._valid_elements[self._options[*elem_index]]
+
+    def collapse_random(self):
+        open_options_adj = self.open_options
+        open_options_adj[open_options_adj == 1] = np.max(open_options_adj)
+
+        fewest_options_ids = np.vstack(np.unravel_index(np.argmin(open_options_adj), shape=open_options_adj.shape)).T
+        selected_ids = fewest_options_ids[0]
+        selected_option = np.flatnonzero(self._options[*selected_ids, :])[0]
+        self._options[*selected_ids, :] = 0
+        self._options[*selected_ids, selected_option] = 1
 
     def as_str(self, incl_options: bool = True) -> str:
         str_rows = []
