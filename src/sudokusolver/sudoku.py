@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -13,7 +13,13 @@ class Puzzle:
     CHECKS: list[Callable[[np.ndarray, set], bool]] = ()
     RULES: list[Callable[[np.ndarray], np.ndarray]] = ()
 
-    def __init__(self, data: np.ndarray, unknown_value: DTYPE, valid_elements: set[DTYPE]) -> None:
+    def __init__(
+        self,
+        data: np.ndarray,
+        unknown_value: DTYPE,
+        valid_elements: set[DTYPE],
+        options: Optional[np.ndarray] = None,
+    ) -> None:
         data = np.squeeze(np.array(data, dtype=self.DTYPE))
 
         if data.ndim != 2:
@@ -21,9 +27,16 @@ class Puzzle:
 
         self._data = data
         self._data[self._data == unknown_value] = self.UNKNOWN_VAL
-        self._valid_elements = np.unique(list(valid_elements))
+        self._valid_elements = np.array(list(valid_elements))
         self._block_size = None
-        self._initialize()
+
+        if options is None:
+            self._initialize_options()
+        else:
+            required_options_shape = (*self._data.shape, len(self._valid_elements))
+            if not options.shape == required_options_shape:
+                raise ValueError(f'Option shape should be {required_options_shape}')
+            self._options = np.array(options)
 
         self.validate()
 
@@ -66,13 +79,16 @@ class Puzzle:
     def get_valid_element_index(self, element):
         return np.flatnonzero(self._valid_elements == element)[0]
 
-    def _initialize(self):
+    def _initialize_options(self):
         self._options = np.ones(shape=(*self._data.shape, len(self._valid_elements)), dtype='bool')
         for elem_index in self.solved_ids:
             self._options[*elem_index, :] = 0
             self._options[*elem_index, self.get_valid_element_index(self._data[*elem_index])] = 1
 
     def check(self) -> bool:
+        if np.any(self.open_options == 0):
+            return False
+
         for check_function in self.CHECKS:
             check = check_function(data=self.data, valid_elements=self._valid_elements)
             if not check:
@@ -80,10 +96,12 @@ class Puzzle:
         return True
 
     def validate(self) -> None:
+        if np.any(self.open_options == 0):
+            raise RuntimeError('Puzzle options has reduced to zero')
         for check_function in self.CHECKS:
             check = check_function(data=self.data, valid_elements=self._valid_elements)
             if not check:
-                raise ValueError(f'Puzzle is not valid, failing {check_function.__name__}')
+                raise RuntimeError(f'Puzzle is not valid, failing {check_function.__name__}')
 
     def update_options(self) -> bool:
         options_changed = False
@@ -106,8 +124,17 @@ class Puzzle:
         fewest_options_ids = np.vstack(np.unravel_index(np.argmin(open_options_adj), shape=open_options_adj.shape)).T
         selected_ids = fewest_options_ids[0]
         selected_option = np.flatnonzero(self._options[*selected_ids, :])[0]
+
+        alternative_options = np.array(self._options)
+        alternative_options[*selected_ids, selected_option] = 0
+        alternative_puzzle = self.__class__(
+            data=self._data, unknown_value=self.UNKNOWN_VAL, valid_elements=self._valid_elements, options=self._options
+        )
+
         self._options[*selected_ids, :] = 0
         self._options[*selected_ids, selected_option] = 1
+
+        return alternative_puzzle
 
     def as_str(self, incl_options: bool = True) -> str:
         str_rows = []
@@ -149,6 +176,14 @@ class Puzzle:
 
         return '\n'.join(str_rows)
 
+    def copy(self):
+        return self.__class__(
+            data=self._data,
+            unknown_value=self.UNKNOWN_VAL,
+            valid_elements=self._valid_elements,
+            options=self._options,
+        )
+
     def __str__(self) -> str:
         return self.as_str(block_size=None)
 
@@ -162,8 +197,9 @@ class ClassicPuzzle(Puzzle):
         data: np.ndarray,
         unknown_value=PUZZLE_UNKNOWN_VALUE,
         valid_elements: set = PUZZLE_9X9_VALID_ELEMENTS,
+        options: Optional[np.ndarray] = None,
     ) -> None:
-        super().__init__(data=data, unknown_value=unknown_value, valid_elements=valid_elements)
+        super().__init__(data=data, unknown_value=unknown_value, valid_elements=valid_elements, options=options)
 
         if self.data.shape[0] != self.data.shape[0]:
             raise ValueError('Puzzle should be square')
